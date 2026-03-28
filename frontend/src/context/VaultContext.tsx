@@ -4,7 +4,7 @@ import React, {
   useEffect,
 } from "react";
 import type { ApiError } from "../lib/api";
-import { subscribeToApiTelemetry } from "../lib/api";
+import { subscribeToApiTelemetry, normalizeApiError } from "../lib/api";
 import type { VaultSummary } from "../lib/vaultApi";
 import { networkConfig } from "../config/network";
 import { useVaultSummary } from "../hooks/useVaultData";
@@ -60,14 +60,7 @@ export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({
       }
     : DEFAULT_SUMMARY;
 
-  const error: ApiError | null = queryError
-    ? {
-        code: "FETCH_ERROR",
-        message: queryError.message,
-        userMessage: "Failed to load vault data",
-        statusCode: 500,
-      }
-    : null;
+  const error = queryError ? normalizeApiError(queryError) : null;
 
   const lastUpdate = new Date(summary.updatedAt);
 

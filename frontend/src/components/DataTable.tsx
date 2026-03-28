@@ -1,6 +1,7 @@
 import type { KeyboardEvent, ReactNode } from "react";
 import { useTranslation } from "../i18n";
 import { Pagination } from "./Pagination";
+import { Skeleton } from "./Skeleton";
 
 export type TableSortDirection = "asc" | "desc";
 
@@ -34,6 +35,7 @@ interface DataTableProps<T> {
   onPageChange?: (page: number) => void;
   onPageSizeChange?: (pageSize: number) => void;
   renderRowDetails?: (row: T) => ReactNode;
+  isLoading?: boolean;
 }
 
 function getCellAlignment(align: DataTableColumn<unknown>["align"]) {
@@ -61,6 +63,7 @@ export function DataTable<T>({
   onPageChange,
   onPageSizeChange,
   renderRowDetails,
+  isLoading,
 }: DataTableProps<T>) {
   const { t } = useTranslation();
   const handleHeaderKeyDown = (
@@ -124,7 +127,20 @@ export function DataTable<T>({
             </tr>
           </thead>
           <tbody>
-            {rows.length === 0 ? (
+            {isLoading ? (
+              Array.from({ length: 5 }).map((_, rowIndex) => (
+                <tr key={`skeleton-row-${rowIndex}`} className="data-table-row">
+                  {columns.map((column) => (
+                    <td
+                      key={`skeleton-cell-${rowIndex}-${column.id}`}
+                      style={{ textAlign: getCellAlignment(column.align) }}
+                    >
+                      <Skeleton variant="text" width="80%" />
+                    </td>
+                  ))}
+                </tr>
+              ))
+            ) : rows.length === 0 ? (
               <tr>
                 <td colSpan={columns.length} className="data-table-empty">
                   {emptyMessage}
@@ -162,30 +178,6 @@ export function DataTable<T>({
         </table>
       </div>
 
-      {pagination && pagination.totalPages > 1 && (
-        <div className="data-table-pagination">
-          <div className="data-table-pagination-summary">
-            {t("dataTable.pageLabel")} {pagination.page}{" "}
-            {t("dataTable.pageOf")} {pagination.totalPages}
-          </div>
-          <div className="data-table-pagination-actions">
-            <button
-              type="button"
-              className="btn btn-outline"
-              onClick={() => onPageChange?.(pagination.page - 1)}
-              disabled={pagination.page <= 1}
-            >
-              {t("dataTable.previous")}
-            </button>
-            <button
-              type="button"
-              className="btn btn-outline"
-              onClick={() => onPageChange?.(pagination.page + 1)}
-              disabled={pagination.page >= pagination.totalPages}
-            >
-              {t("dataTable.next")}
-            </button>
-          </div>
       {pagination && (
         <div className="data-table-pagination" style={{ padding: 0 }}>
           <Pagination

@@ -1,299 +1,209 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import ApiStatusBanner from "../components/ApiStatusBanner";
 import { DataTable, type DataTableColumn } from "../components/DataTable";
-import PageHeader from "../components/PageHeader";
+import { useDataTableState } from "../hooks/useDataTableState";
+import { useClientDataTable } from "../hooks/useClientDataTable";
 import { normalizeApiError, type ApiError } from "../lib/api";
-import { normalizeApiError, isValidationError, type ApiError, type ValidationError } from "../lib/api";
 import {
+  getTransactions,
   formatAmount,
   formatTimestamp,
   truncateHash,
   type Transaction,
 } from "../lib/transactionApi";
-import { useClientDataTable } from "../hooks/useClientDataTable";
-import { useDataTableState } from "../hooks/useDataTableState";
-import { getStellarExplorerUrl } from "../lib/security";
+import CopyButton from "../components/CopyButton";
+import ViewState from "../components/ViewState";
+import RefreshControl from "../components/RefreshControl";
 
 interface TransactionHistoryProps {
   walletAddress: string | null;
 }
 
-type TxTypeFilter = "all" | "deposit" | "withdrawal";
-
-// Task 4.2: DataTable column config for transactions
-const columns: DataTableColumn<Transaction>[] = [
-  {
-    id: "type",
-    header: "Type",
-    sortable: true,
-    cell: (row) => (
-      <span
-        className={`tag ${row.type === "deposit" ? "cyan" : "red"}`}
-        style={{ textTransform: "capitalize" }}
-      >
-        {row.type}
-      </span>
-    ),
-  },
-  {
-    id: "amount",
-    header: "Amount",
-    sortable: true,
-    cell: (row) => <span>{formatAmount(row.amount, row.asset)}</span>,
-  },
-  {
-    id: "asset",
-    header: "Asset",
-    sortable: false,
-    cell: (row) => <span>{row.asset ?? "—"}</span>,
-  },
-  {
-    id: "date",
-    header: "Date",
-    sortable: true,
-    cell: (row) => <span>{formatTimestamp(row.timestamp)}</span>,
-  },
-  {
-    id: "hash",
-    header: "Transaction Hash",
-    sortable: false,
-    cell: (row) => (
-      <a
-        href={getStellarExplorerUrl(row.transactionHash, "testnet")}
-        target="_blank"
-        rel="noopener noreferrer"
-        style={{ color: "var(--accent-cyan)", textDecoration: "none" }}
-        title={row.transactionHash}
-      >
-        {truncateHash(row.transactionHash)}
-      </a>
-    ),
-  },
-];
-
 const TransactionHistory: React.FC<TransactionHistoryProps> = ({
   walletAddress,
 }) => {
+  const [searchParams] = useSearchParams();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<ApiError | ValidationError | null>(null);
+  const [error, setError] = useState<ApiError | null>(null);
+  const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
 
-  // Task 4.3: Wire useDataTableState for sort, page, pageSize URL persistence
-  const { state, setSort, setPage, setPageSize } = useDataTableState({
-    defaultSortBy: "date",
+  const tableState = useDataTableState({
+    defaultSearch: searchParams.get("search") || "",
+    defaultSortBy: "timestamp",
     defaultSortDirection: "desc",
+    defaultPage: Number(searchParams.get("page")) || 1,
     defaultPageSize: 10,
   });
 
-  // Task 4.3: Read txType filter from useSearchParams (not added to shared hook)
-  const [searchParams, setSearchParams] = useSearchParams();
-  const txType = (searchParams.get("txType") ?? "all") as TxTypeFilter;
+  const fetchTransactions = async (silent = false) => {
+    if (!walletAddress) return;
 
-  const setTxType = (value: TxTypeFilter) => {
-    const nextParams = new URLSearchParams(searchParams);
-    nextParams.set("txType", value);
-    // Task 4.3: Reset page to 1 on filter change
-    nextParams.set("page", "1");
-    setSearchParams(nextParams, { replace: true });
+    if (!silent) setIsLoading(true);
+    setError(null);
+
+    try {
+      const data = await getTransactions({
+        walletAddress,
+        limit: 50,
+        order: "desc",
+        type: "all",
+      });
+      setTransactions(data);
+      setLastRefreshed(new Date());
+    } catch (err: any) {
+      setError(normalizeApiError(err));
+    } finally {
+      if (!silent) setIsLoading(false);
+    }
   };
 
   useEffect(() => {
-    if (!walletAddress) {
-      return;
-    }
+    fetchTransactions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [walletAddress]);
 
-    let isMounted = true;
+  const columns: DataTableColumn<Transaction>[] = [
+    {
+      id: "type",
+      header: "Type",
+      sortable: true,
+      cell: (tr: Transaction) => (
+        <span
+          className="tag"
+          style={{
+            textTransform: "capitalize",
+            background:
+              tr.type === "deposit"
+                ? "rgba(16, 185, 129, 0.1)"
+                : "rgba(99, 102, 241, 0.1)",
+            color:
+              tr.type === "deposit"
+                ? "var(--accent-cyan)"
+                : "var(--accent-purple)",
+            border: "1px solid currentColor",
+          }}
+        >
+          {tr.type}
+        </span>
+      ),
+    },
+    {
+      id: "amount",
+      header: "Amount",
+      sortable: true,
+      cell: (tr: Transaction) => (
+        <span style={{ fontWeight: 600, fontFamily: "var(--font-display)" }}>
+          {formatAmount(tr.amount, tr.asset)}
+        </span>
+      ),
+    },
+    {
+      id: "timestamp",
+      header: "Date",
+      sortable: true,
+      cell: (tr: Transaction) => (
+        <span style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>
+          {formatTimestamp(tr.timestamp)}
+        </span>
+      ),
+    },
+    {
+      id: "hash",
+      header: "Hash",
+      sortable: false,
+      cell: (tr: Transaction) => (
+        <div className="copy-field">
+          <span className="copy-field-value copy-field-value-mono">
+            {truncateHash(tr.transactionHash)}
+          </span>
+          <CopyButton
+            value={tr.transactionHash}
+            label="transaction hash"
+            successDescription="Hash copied to clipboard"
+          />
+        </div>
+      ),
+    },
+  ];
 
-    const loadTransactions = async () => {
-      setIsLoading(true);
-
-      try {
-        const data = await getTransactions({
-          walletAddress,
-          limit: state.pageSize,
-          order: state.sortDirection,
-          type: txType,
-        });
-        if (!isMounted) return;
-        setTransactions(data);
-        setError(null);
-      } catch (unknownError) {
-        if (!isMounted) return;
-        if (isValidationError(unknownError)) {
-          setError(unknownError);
-        } else {
-          setError(normalizeApiError(unknownError));
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    void loadTransactions();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [walletAddress, state.pageSize, state.sortDirection, txType]);
-
-  // Apply type filter before passing to useClientDataTable
-  const filteredByType = transactions; // already filtered by API
-
-  const { rows, page, totalItems, totalPages } = useClientDataTable({
-    rows: filteredByType,
-    state,
+  const { rows, totalItems, totalPages } = useClientDataTable<Transaction>({
+    rows: transactions,
+    state: tableState.state,
     getSearchValue: (row) =>
-      `${row.type} ${row.asset ?? ""} ${row.transactionHash}`,
+      `${row.type} ${row.asset} ${row.transactionHash}`,
     getSortValue: (row, columnId) => {
       switch (columnId) {
         case "type":
           return row.type;
         case "amount":
-          return row.amount !== null ? parseFloat(row.amount) : 0;
-        case "date":
-          return row.timestamp;
+          return row.amount ?? "0";
+        case "timestamp":
+          return new Date(row.timestamp).getTime();
         default:
-          return row.timestamp;
+          return row.amount ?? "0";
       }
     },
   });
 
-  // Task 4.4: Empty-state messages
-  const emptyMessage =
-    txType !== "all"
-      ? "No transactions matched the current filter."
-      : "No transactions found for this wallet.";
+  if (!isLoading && transactions.length === 0 && !error) {
+    return (
+      <ViewState
+        title="No transactions found"
+        description="Your deposit and withdrawal history will appear here once you start using the YieldVault."
+      />
+    );
+  }
 
   return (
-    <div className="glass-panel" style={{ padding: "32px" }}>
-      <PageHeader
-        title={
-          <>
-            Transaction <span className="text-gradient">History</span>
-          </>
-        }
-        description="View all your past deposits and withdrawals."
-        breadcrumbs={[
-          { label: "Home", href: "/" },
-          { label: "Transactions" },
-        ]}
-        statusChips={
-          walletAddress
-            ? [
-                {
-                  label: `${transactions.length} Total`,
-                  variant: "cyan" as const,
-                },
-                {
-                  label: isLoading ? "Loading..." : "Up to date",
-                  variant: (isLoading ? "warning" : "success") as const,
-                },
-              ]
-            : undefined
-        }
-      />
-
-      {!walletAddress ? (
-        <div style={{ textAlign: "center", padding: "48px" }}>
+    <div className="container" style={{ padding: "40px 0" }}>
+      {error && <ApiStatusBanner error={error} />}
+      <div
+        className="flex justify-between items-end"
+        style={{ marginBottom: "32px" }}
+      >
+        <div>
+          <h1 style={{ marginBottom: "8px" }}>Transaction History</h1>
           <p style={{ color: "var(--text-secondary)" }}>
-            Please connect your wallet to view your transaction history.
+            View all your vault activity and on-chain settlements.
           </p>
         </div>
-      ) : (
-        <div className="flex flex-col gap-lg">
-          {error && <ApiStatusBanner error={error} />}
-
-          <section
-            className="glass-panel"
-            style={{ padding: "24px", background: "var(--bg-muted)" }}
-            aria-labelledby="transactions-heading"
-          >
-            <div className="portfolio-toolbar">
-              <div>
-                <h2 id="transactions-heading" style={{ marginBottom: "6px" }}>Transactions</h2>
-                <p className="text-body-sm" style={{ color: "var(--text-secondary)" }}>
-                  Sort and filter your deposit and withdrawal history.
-                </p>
-              </div>
-
-              <div className="portfolio-toolbar-controls">
-                <label className="input-group" style={{ minWidth: "160px" }}>
-                  <span className="text-body-sm">Type</span>
-                  <div className="input-wrapper">
-                    <select
-                      aria-label="Filter by type"
-                      value={txType}
-                      onChange={(e) =>
-                        setTxType(e.target.value as TxTypeFilter)
-                      }
-                      className="portfolio-select"
-                    >
-                      <option value="all">All</option>
-                      <option value="deposit">Deposit</option>
-                      <option value="withdrawal">Withdrawal</option>
-                    </select>
-                  </div>
-                </label>
-
-                <label className="input-group" style={{ minWidth: "120px" }}>
-                  <span className="text-body-sm">Rows</span>
-                  <div className="input-wrapper">
-                    <select
-                      aria-label="Rows per page"
-                      value={state.pageSize}
-                      onChange={(e) => setPageSize(Number(e.target.value))}
-                      className="portfolio-select"
-                    >
-                      <option value={10}>10</option>
-                      <option value={25}>25</option>
-                      <option value={50}>50</option>
-                    </select>
-                  </div>
-                </label>
-              </div>
-            </div>
-
-            <div className="text-body-sm" style={{ color: "var(--text-secondary)", marginBottom: "16px" }}>
-              {isLoading
-                ? "Loading transactions..."
-                : `${totalItems} transactions found`}
-            </div>
-
-            {isLoading ? (
-              <div
-                style={{
-                  textAlign: "center",
-                  padding: "48px",
-                  color: "var(--text-secondary)",
-                }}
-              >
-                Loading transactions...
-              </div>
-            ) : (
-              <DataTable
-                caption="Transaction history"
-                columns={columns}
-                rows={rows}
-                rowKey={(row) => row.id}
-                emptyMessage={emptyMessage}
-                sortBy={state.sortBy}
-                sortDirection={state.sortDirection}
-                onSortChange={setSort}
-                pagination={{
-                  page,
-                  pageSize: state.pageSize,
-                  totalItems,
-                  totalPages,
-                }}
-                onPageChange={setPage}
-              />
-            )}
-          </section>
+        <div className="flex gap-md items-center">
+           <RefreshControl
+            isPolling={false}
+            isPaused={true}
+            pauseReason="manual"
+            onPause={() => {}}
+            onResume={() => fetchTransactions()}
+            onRefresh={() => fetchTransactions(true)}
+            isRefetching={isLoading}
+            lastUpdated={lastRefreshed}
+          />
         </div>
-      )}
+      </div>
+
+      <div className="glass-panel" style={{ padding: "0" }}>
+        <DataTable<Transaction>
+          columns={columns}
+          rows={rows}
+          isLoading={isLoading}
+          rowKey={(row) => row.id}
+          caption="Transaction History"
+          emptyMessage="No transactions found"
+          sortBy={tableState.state.sortBy}
+          sortDirection={tableState.state.sortDirection}
+          onSortChange={tableState.setSort}
+          pagination={{
+            page: tableState.state.page,
+            pageSize: tableState.state.pageSize,
+            totalItems,
+            totalPages,
+          }}
+          onPageChange={tableState.setPage}
+          onPageSizeChange={tableState.setPageSize}
+        />
+      </div>
     </div>
   );
 };

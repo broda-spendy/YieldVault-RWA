@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import ApiStatusBanner from "../components/ApiStatusBanner";
 import {
   DataTable,
@@ -7,7 +7,6 @@ import {
 import PageHeader from "../components/PageHeader";
 import { normalizeApiError, isValidationError, type ApiError, type ValidationError } from "../lib/api";
 import CopyButton from "../components/CopyButton";
-import { normalizeApiError, type ApiError } from "../lib/api";
 import {
   getPortfolioHoldings,
   type PortfolioHolding,
@@ -15,8 +14,8 @@ import {
 import { useClientDataTable } from "../hooks/useClientDataTable";
 import { useUrlState } from "../hooks/useUrlState";
 import { useServerDataTable } from "../hooks/useServerDataTable";
-import { usePortfolioHoldings } from "../hooks/usePortfolioData";
-import { normalizeApiError } from "../lib/api";
+import { Skeleton } from "../components/Skeleton";
+import { useToast } from "../context/ToastContext";
 
 interface PortfolioProps {
   walletAddress: string | null;
@@ -193,9 +192,9 @@ const Portfolio: React.FC<PortfolioProps> = ({ walletAddress }) => {
     return holdings.filter((h) => h.status === urlState.filters.status);
   }, [holdings, urlState.filters.status]);
 
-  const { rows, page, totalItems, totalPages } = useClientDataTable({
+  const { rows, page, totalItems, totalPages } = useClientDataTable<PortfolioHolding>({
     rows: filteredHoldings,
-    state,
+    state: state,
     getSearchValue: (row) =>
       `${row.asset} ${row.vaultName} ${row.symbol} ${row.issuer} ${row.status}`,
     getSortValue: (row, columnId) => {
@@ -244,7 +243,7 @@ const Portfolio: React.FC<PortfolioProps> = ({ walletAddress }) => {
                 },
                 {
                   label: isLoading ? "Syncing..." : "Live",
-                  variant: (isLoading ? "warning" : "success") as const,
+                  variant: (isLoading ? "warning" : "success") as "warning" | "success",
                 },
               ]
             : undefined
@@ -272,8 +271,8 @@ const Portfolio: React.FC<PortfolioProps> = ({ walletAddress }) => {
               <div className="text-body-sm" style={{ color: "var(--text-secondary)" }}>
                 Total Assets
               </div>
-              <div style={{ fontSize: "var(--text-4xl)", fontWeight: "var(--font-semibold)" }}>
-                {currencyFormatter.format(totalValue)}
+               <div style={{ fontSize: "var(--text-4xl)", fontWeight: "var(--font-semibold)" }}>
+                {isLoading ? <Skeleton width={150} height={40} /> : currencyFormatter.format(totalValue)}
               </div>
             </div>
             <div
@@ -283,14 +282,16 @@ const Portfolio: React.FC<PortfolioProps> = ({ walletAddress }) => {
               <div className="text-body-sm" style={{ color: "var(--text-secondary)" }}>
                 Unrealized Gain
               </div>
-              <div
+               <div
                 style={{
                   fontSize: "var(--text-2xl)",
                   color: "var(--accent-cyan)",
                   fontWeight: "var(--font-semibold)",
                 }}
               >
-                +{currencyFormatter.format(totalGain)}
+                {isLoading ? <Skeleton width={120} height={32} /> : (
+                  <>+{currencyFormatter.format(totalGain)}</>
+                )}
               </div>
             </div>
           </div>
@@ -356,11 +357,12 @@ const Portfolio: React.FC<PortfolioProps> = ({ walletAddress }) => {
               {isLoading ? "Loading holdings..." : `${totalItems} holdings found`}
             </div>
 
-            <DataTable
+             <DataTable<PortfolioHolding>
               caption="Portfolio holdings"
               columns={columns}
               rows={rows}
               rowKey={(row) => row.id}
+              isLoading={isLoading}
               emptyMessage={
                 isLoading
                   ? "Loading holdings..."

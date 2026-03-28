@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import React, { useState } from "react";
 import { Activity, ShieldCheck, TrendingUp, Wallet as WalletIcon } from "./icons";
 import { hasCustomRpcConfig, networkConfig } from "../config/network";
 import { useVault } from "../context/VaultContext";
@@ -7,76 +7,17 @@ import VaultPerformanceChart from "./VaultPerformanceChart";
 import { useToast } from "../context/ToastContext";
 import CopyButton from "./CopyButton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./Tabs";
+import { Skeleton } from "./Skeleton";
 
 interface VaultDashboardProps {
   walletAddress: string | null;
   usdcBalance?: number;
 }
 
-const VaultDashboard: React.FC<VaultDashboardProps> = ({ walletAddress, usdcBalance = 0 }) => {
-    const { formattedTvl, formattedApy, summary, error, isLoading } = useVault();
-    const toast = useToast();
-    const [activeTab, setActiveTab] = useState<"deposit" | "withdraw">("deposit");
-    const [amount, setAmount] = useState("");
-    const [isProcessing, setIsProcessing] = useState(false);
-    const [pendingBalanceChange, setPendingBalanceChange] = useState(0);
-
-    const yieldRate = formattedApy;
-    const tvl = formattedTvl;
-    const strategy = summary.strategy;
-    const availableBalance = Math.max(0, usdcBalance + pendingBalanceChange);
-    const estimatedUsdcFee = (() => {
-        const feeMatch = summary.networkFeeEstimate.match(/([0-9]*\.?[0-9]+)\s*USDC/i);
-        return feeMatch ? Number(feeMatch[1]) : 0;
-    })();
-    const maxDepositAmount = Math.max(0, availableBalance - estimatedUsdcFee);
-    const maxWithdrawAmount = availableBalance;
-    const maxAllowableAmount = activeTab === "deposit" ? maxDepositAmount : maxWithdrawAmount;
-
-    const handleTransaction = () => {
-        const value = Number(amount);
-        if (!walletAddress || !amount || isNaN(value)) {
-            toast.warning({
-                title: "Enter a valid amount",
-                description: "Choose a wallet and amount before submitting the transaction.",
-            });
-            return;
-        }
-        if (value > maxAllowableAmount) {
-            toast.warning({
-                title: "Amount exceeds maximum",
-                description:
-                    activeTab === "deposit"
-                        ? `You can deposit up to ${maxDepositAmount.toFixed(2)} USDC based on your available balance and fees.`
-                        : `You can withdraw up to ${maxWithdrawAmount.toFixed(2)} USDC.`,
-            });
-            return;
-        }
-        setIsProcessing(true);
-
-        // Simulate transaction delay
-        setTimeout(() => {
-            if (activeTab === "deposit") {
-                setPendingBalanceChange((prev) => prev + value);
-            }
-            if (activeTab === "withdraw") {
-                setPendingBalanceChange((prev) => prev - value);
-            }
-            setAmount("");
-            setIsProcessing(false);
-            toast.success({
-                title: activeTab === "deposit" ? "Deposit queued" : "Withdrawal queued",
-                description:
-                    activeTab === "deposit"
-                        ? `${value.toFixed(2)} USDC has been added to your pending vault activity.`
-                        : `${value.toFixed(2)} USDC has been added to your pending withdrawal activity.`,
-            });
-        }, 2000);
-    };
-const VaultDashboard: React.FC<VaultDashboardProps> = ({
+const VaultDashboard = ({
   walletAddress,
   usdcBalance = 0,
-}) => {
+}: VaultDashboardProps) => {
   const { formattedTvl, formattedApy, summary, error, isLoading } = useVault();
   const toast = useToast();
   const [activeTab, setActiveTab] = useState<"deposit" | "withdraw">("deposit");
@@ -107,8 +48,6 @@ const VaultDashboard: React.FC<VaultDashboardProps> = ({
       return;
     }
 
-                <div className="glass-panel panel-padding-mobile" style={{ padding: '32px' }}>
-                    {error && <ApiStatusBanner error={error} />}
     if (actionType === "withdraw" && value > availableBalance) {
       toast.warning({
         title: "Insufficient balance",
@@ -147,17 +86,21 @@ const VaultDashboard: React.FC<VaultDashboardProps> = ({
           >
             <div>
               <h2 style={{ fontSize: "1.5rem", marginBottom: "4px" }}>
-                Global RWA Yield Fund
+                {isLoading ? <Skeleton width={200} height={24} /> : "Global RWA Yield Fund"}
               </h2>
-              <span
-                className="tag"
-                style={{
-                  background: "rgba(255, 255, 255, 0.05)",
-                  color: "var(--text-secondary)",
-                }}
-              >
-                Tokens: USDC
-              </span>
+              {isLoading ? (
+                <Skeleton width={100} height={20} />
+              ) : (
+                <span
+                  className="tag"
+                  style={{
+                    background: "rgba(255, 255, 255, 0.05)",
+                    color: "var(--text-secondary)",
+                  }}
+                >
+                  Tokens: USDC
+                </span>
+              )}
             </div>
             <div style={{ textAlign: "right" }}>
               <div style={{ color: "var(--text-secondary)", fontSize: "0.85rem" }}>
@@ -171,14 +114,11 @@ const VaultDashboard: React.FC<VaultDashboardProps> = ({
                   fontWeight: 700,
                 }}
               >
-                {formattedApy}
+                {isLoading ? <Skeleton width={80} height={32} /> : formattedApy}
               </div>
             </div>
           </div>
 
-            {/* Right Column - User Interaction */}
-            <div style={{ flex: '1 1 400px' }}>
-                <div className="glass-panel panel-padding-mobile" style={{ padding: '32px', position: 'relative', overflow: 'hidden' }}>
           <div
             style={{
               height: "1px",
@@ -221,7 +161,7 @@ const VaultDashboard: React.FC<VaultDashboardProps> = ({
                   fontWeight: 600,
                 }}
               >
-                {formattedTvl}
+                {isLoading ? <Skeleton width={120} height={24} /> : formattedTvl}
               </div>
             </div>
             <div>
@@ -231,7 +171,7 @@ const VaultDashboard: React.FC<VaultDashboardProps> = ({
               <div className="flex items-center gap-sm">
                 <ShieldCheck size={16} color="var(--accent-cyan)" />
                 <span style={{ fontSize: "1.1rem", fontWeight: 500 }}>
-                  {summary.assetLabel}
+                  {isLoading ? <Skeleton width={100} height={24} /> : summary.assetLabel}
                 </span>
               </div>
             </div>
@@ -257,27 +197,37 @@ const VaultDashboard: React.FC<VaultDashboardProps> = ({
                 lineHeight: "1.6",
               }}
             >
-              This vault pools USDC and deploys it into verified tokenized sovereign bonds
-              available on the Stellar network. Yields are algorithmically harvested and
-              auto-compounded daily into the vault token price.
+              {isLoading ? (
+                <>
+                  <Skeleton variant="text" />
+                  <Skeleton variant="text" />
+                  <Skeleton variant="text" width="60%" />
+                </>
+              ) : (
+                "This vault pools USDC and deploys it into verified tokenized sovereign bonds available on the Stellar network. Yields are algorithmically harvested and auto-compounded daily into the vault token price."
+              )}
             </p>
             <div style={{ marginTop: "12px", color: "var(--text-secondary)", fontSize: "0.82rem" }}>
-              Strategy: <span style={{ color: "var(--text-primary)" }}>{strategy.name}</span> ({strategy.issuer})
+              Strategy: {isLoading ? <Skeleton width={150} height={16} /> : <><span style={{ color: "var(--text-primary)" }}>{strategy.name}</span> ({strategy.issuer})</>}
             </div>
             <div
               className="copy-field"
               style={{ marginTop: "8px", color: "var(--text-secondary)", fontSize: "0.78rem" }}
             >
               <span>Strategy ID:</span>
-              <span className="copy-field-value copy-field-value-mono">{strategy.id}</span>
-              <CopyButton
-                value={strategy.id}
-                label="strategy ID"
-                successDescription="The strategy ID has been copied to your clipboard."
-              />
+              <span className="copy-field-value copy-field-value-mono">
+                {isLoading ? <Skeleton width={200} height={16} /> : strategy.id}
+              </span>
+              {!isLoading && (
+                <CopyButton
+                  value={strategy.id}
+                  label="strategy ID"
+                  successDescription="The strategy ID has been copied to your clipboard."
+                />
+              )}
             </div>
             <div style={{ marginTop: "8px", color: "var(--text-secondary)", fontSize: "0.78rem" }}>
-              RPC: {hasCustomRpcConfig ? "Custom" : "Default"} - {networkConfig.rpcUrl}
+              RPC: {isLoading ? <Skeleton width={120} height={16} /> : <>{hasCustomRpcConfig ? "Custom" : "Default"} - {networkConfig.rpcUrl}</>}
             </div>
           </div>
         </div>
@@ -309,43 +259,6 @@ const VaultDashboard: React.FC<VaultDashboardProps> = ({
             }}
           />
 
-                    <div className="flex justify-between items-center" style={{ marginBottom: '16px' }}>
-                        <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                            {activeTab === 'deposit' ? 'Amount to deposit' : 'Amount to withdraw'}
-                        </div>
-                        <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-                            Balance: <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{walletAddress ? availableBalance.toFixed(2) : '0.00'}</span>
-                        </div>
-                    </div>
-
-                    <div className="input-group" style={{ marginBottom: '24px' }}>
-                        <div className="input-wrapper">
-                            <span style={{ color: 'var(--text-secondary)', paddingRight: '12px', borderRight: '1px solid var(--border-glass)', marginRight: '16px' }}>USDC</span>
-                            <input
-                                className="input-field"
-                                type="number"
-                                placeholder="0.00"
-                                value={amount}
-                                onChange={(e) => setAmount(e.target.value)}
-                            />
-                            <button
-                                style={{
-                                    color: 'var(--accent-cyan)',
-                                    fontSize: '0.8rem',
-                                    fontWeight: 600,
-                                    background: 'var(--accent-cyan-dim)',
-                                    padding: '4px 10px',
-                                    borderRadius: '6px'
-                                }}
-                                onClick={() =>
-                                  setAmount(maxAllowableAmount.toFixed(2))
-                                }
-                                disabled={!walletAddress || maxAllowableAmount <= 0}
-                            >
-                                MAX
-                            </button>
-                        </div>
-                    </div>
           {!walletAddress && (
             <div
               style={{
@@ -391,11 +304,11 @@ const VaultDashboard: React.FC<VaultDashboardProps> = ({
               <TabsContent key={tab} value={tab}>
                 <div className="flex justify-between items-center" style={{ marginBottom: "16px" }}>
                   <div style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>
-                    {tab === "deposit" ? "Amount to deposit" : "Amount to withdraw"}
+                    {isLoading ? <Skeleton width={120} height={16} /> : (tab === "deposit" ? "Amount to deposit" : "Amount to withdraw")}
                   </div>
                   <div style={{ color: "var(--text-secondary)", fontSize: "0.85rem" }}>
                     Balance: <span style={{ color: "var(--text-primary)", fontWeight: 600 }}>
-                      {walletAddress ? availableBalance.toFixed(2) : "0.00"}
+                      {isLoading ? <Skeleton width={60} height={16} /> : (walletAddress ? availableBalance.toFixed(2) : "0.00")}
                     </span>
                   </div>
                 </div>
@@ -412,27 +325,33 @@ const VaultDashboard: React.FC<VaultDashboardProps> = ({
                     >
                       USDC
                     </span>
-                    <input
-                      className="input-field"
-                      type="number"
-                      placeholder="0.00"
-                      value={amount}
-                      onChange={(event) => setAmount(event.target.value)}
-                    />
-                    <button
-                      type="button"
-                      style={{
-                        color: "var(--accent-cyan)",
-                        fontSize: "0.8rem",
-                        fontWeight: 600,
-                        background: "var(--accent-cyan-dim)",
-                        padding: "4px 10px",
-                        borderRadius: "6px",
-                      }}
-                      onClick={() => setAmount(availableBalance.toString())}
-                    >
-                      MAX
-                    </button>
+                    {isLoading ? (
+                      <Skeleton width="100%" height={24} style={{ margin: "10px 0" }} />
+                    ) : (
+                      <input
+                        className="input-field"
+                        type="number"
+                        placeholder="0.00"
+                        value={amount}
+                        onChange={(event) => setAmount(event.target.value)}
+                      />
+                    )}
+                    {!isLoading && (
+                      <button
+                        type="button"
+                        style={{
+                          color: "var(--accent-cyan)",
+                          fontSize: "0.8rem",
+                          fontWeight: 600,
+                          background: "var(--accent-cyan-dim)",
+                          padding: "4px 10px",
+                          borderRadius: "6px",
+                        }}
+                        onClick={() => setAmount(availableBalance.toString())}
+                      >
+                        MAX
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -442,7 +361,7 @@ const VaultDashboard: React.FC<VaultDashboardProps> = ({
                       BENJI Strategy
                     </span>
                     <span style={{ fontSize: "0.9rem", fontWeight: 500 }}>
-                      {strategy.status === "active" ? "Active" : "Inactive"}
+                      {isLoading ? <Skeleton width={60} height={16} /> : (strategy.status === "active" ? "Active" : "Inactive")}
                     </span>
                   </div>
                   <div className="flex justify-between items-center" style={{ marginTop: "8px" }}>
@@ -450,7 +369,7 @@ const VaultDashboard: React.FC<VaultDashboardProps> = ({
                       Exchange Rate
                     </span>
                     <span style={{ fontSize: "0.9rem", fontWeight: 500 }}>
-                      1 yvUSDC = {summary.exchangeRate.toFixed(3)} USDC
+                      {isLoading ? <Skeleton width={120} height={16} /> : `1 yvUSDC = ${summary.exchangeRate.toFixed(3)} USDC`}
                     </span>
                   </div>
                   <div className="flex justify-between items-center" style={{ marginTop: "8px" }}>
@@ -458,7 +377,7 @@ const VaultDashboard: React.FC<VaultDashboardProps> = ({
                       Network Fee
                     </span>
                     <span style={{ fontSize: "0.9rem", fontWeight: 500 }}>
-                      {summary.networkFeeEstimate}
+                      {isLoading ? <Skeleton width={80} height={16} /> : summary.networkFeeEstimate}
                     </span>
                   </div>
                 </div>

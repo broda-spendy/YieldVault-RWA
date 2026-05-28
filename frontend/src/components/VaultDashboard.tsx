@@ -26,7 +26,7 @@ import { copyTextToClipboard } from "../lib/clipboard";
 import { useFeeEstimate } from "../hooks/useFeeEstimate";
 import HelpIcon from "./ui/HelpIcon";
 import EmptyState from "./ui/EmptyState";
-import confetti from "canvas-confetti";
+import confetti from "../lib/confetti";
 
 /**
  * Valid transaction tabs in the vault dashboard.

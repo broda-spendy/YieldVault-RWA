@@ -84,4 +84,19 @@ impl MockKoreanSovereignStrategy {
 
         amount
     }
+
+    pub fn total_value(env: Env) -> i128 {
+        Self::harvest_yield(env)
+    }
+
+    pub fn deposit(_env: Env, _amount: i128) {}
+
+    pub fn withdraw(_env: Env, _amount: i128) {}
+
+    pub fn asset(env: Env) -> Address {
+        env.storage()
+            .instance()
+            .get(&DataKey::Admin)
+            .unwrap()
+    }
 }

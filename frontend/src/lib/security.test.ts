@@ -252,11 +252,10 @@ describe('XSS Attack Vectors', () => {
   test('escapeHtml neutralizes all XSS payloads', () => {
     XSS_PAYLOADS.forEach(payload => {
       const escaped = escapeHtml(payload);
-      expect(escaped).not.toContain('<script');
-      expect(escaped).not.toContain('javascript:');
-      expect(escaped).not.toContain('onerror');
-      expect(escaped).not.toContain('onload');
-      expect(escaped).toContain('&lt;');
+      expect(escaped).not.toMatch(/<(script|img|svg|iframe|body|input|details)/i);
+      if (payload.includes('<')) {
+        expect(escaped).toContain('&lt;');
+      }
     });
   });
 

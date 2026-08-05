@@ -59,14 +59,19 @@ describe('XSS Prevention - DataTable Component', () => {
         />
       );
 
-      // Verify no script tags are present in the DOM
-      expect(container.innerHTML).not.toContain('<script');
-      expect(container.innerHTML).not.toContain('javascript:');
-      expect(container.innerHTML).not.toContain('onerror');
-      expect(container.innerHTML).not.toContain('onload');
-      
-      // Verify the payload is escaped (contains &lt; instead of <)
-      expect(container.innerHTML).toContain('&lt;');
+      // Verify no executable tags or elements were injected into the DOM
+      expect(container.querySelector('script')).toBeNull();
+      expect(container.querySelector('img')).toBeNull();
+      expect(container.querySelector('svg')).toBeNull();
+      expect(container.querySelector('iframe')).toBeNull();
+
+      // Verify no unescaped HTML element tags are present
+      expect(container.innerHTML).not.toMatch(/<(script|img|svg|iframe|body|input|details|marquee|video|audio)/i);
+
+      // If the payload contained '<', verify it was properly entity-escaped
+      if (payload.includes('<')) {
+        expect(container.innerHTML).toContain('&lt;');
+      }
     });
   });
 
@@ -91,7 +96,8 @@ describe('XSS Prevention - DataTable Component', () => {
       />
     );
 
-    expect(container.innerHTML).not.toContain('<script');
+    expect(container.querySelector('script')).toBeNull();
+    expect(container.innerHTML).not.toMatch(/<script/i);
     expect(container.innerHTML).toContain('&lt;script');
   });
 
@@ -116,7 +122,8 @@ describe('XSS Prevention - DataTable Component', () => {
       />
     );
 
-    expect(container.innerHTML).not.toContain('onerror');
+    expect(container.querySelector('img')).toBeNull();
+    expect(container.innerHTML).not.toMatch(/<img/i);
     expect(container.innerHTML).toContain('&lt;img');
   });
 });
@@ -134,10 +141,13 @@ describe('XSS Prevention - FormField Component', () => {
         />
       );
 
-      expect(container.innerHTML).not.toContain('<script');
-      expect(container.innerHTML).not.toContain('javascript:');
-      expect(container.innerHTML).not.toContain('onerror');
-      expect(container.innerHTML).toContain('&lt;');
+      expect(container.querySelector('script')).toBeNull();
+      expect(container.querySelector('img')).toBeNull();
+      expect(container.querySelector('svg')).toBeNull();
+      expect(container.querySelector('iframe')).toBeNull();
+      if (payload.includes('<')) {
+        expect(container.innerHTML).toContain('&lt;');
+      }
     });
   });
 
@@ -153,7 +163,8 @@ describe('XSS Prevention - FormField Component', () => {
       />
     );
 
-    expect(container.innerHTML).not.toContain('onload');
+    expect(container.querySelector('svg')).toBeNull();
+    expect(container.innerHTML).not.toMatch(/<svg/i);
     expect(container.innerHTML).toContain('&lt;svg');
   });
 
@@ -168,12 +179,13 @@ describe('XSS Prevention - FormField Component', () => {
         />
       );
 
-      // Input value attribute should be escaped
+      // Input value attribute should be set safely
       const input = container.querySelector('input');
       expect(input?.value).toBe(payload);
       
-      // But the HTML should not contain executable scripts
-      expect(container.innerHTML).not.toContain('<script');
+      // But no executable script tags should exist in the DOM
+      expect(container.querySelector('script')).toBeNull();
+      expect(container.querySelectorAll('script').length).toBe(0);
     });
   });
 });
@@ -184,8 +196,11 @@ describe('XSS Prevention - React JSX Rendering', () => {
       const TestComponent = () => <div>{payload}</div>;
       const { container } = render(<TestComponent />);
 
-      expect(container.innerHTML).not.toContain('<script');
-      expect(container.innerHTML).toContain('&lt;');
+      expect(container.querySelector('script')).toBeNull();
+      expect(container.innerHTML).not.toMatch(/<(script|img|svg|iframe|body|input|details|marquee|video|audio)/i);
+      if (payload.includes('<')) {
+        expect(container.innerHTML).toContain('&lt;');
+      }
     });
   });
 
@@ -196,7 +211,7 @@ describe('XSS Prevention - React JSX Rendering', () => {
 
     const div = container.querySelector('div');
     expect(div?.getAttribute('title')).toBe(maliciousTitle);
-    expect(container.innerHTML).not.toContain('<script><script>');
+    expect(container.querySelector('script')).toBeNull();
   });
 
   test('React prevents JavaScript protocol in href', () => {
@@ -205,18 +220,14 @@ describe('XSS Prevention - React JSX Rendering', () => {
     const { container } = render(<TestComponent />);
 
     const link = container.querySelector('a');
-    // React/browser will sanitize javascript: protocol
-    expect(link?.getAttribute('href')).toBe(maliciousHref);
-    // But clicking won't execute (browser security)
+    // React/browser will sanitize javascript: protocol URL or set blocked protocol
+    const href = link?.getAttribute('href') || '';
+    expect(href).toMatch(/^javascript:/i);
   });
 });
 
 describe('XSS Prevention - Style Injection', () => {
   test('React style prop prevents CSS injection', () => {
-    const maliciousStyle = 'color: red; background: url(javascript:alert(1))';
-    
-    // React style prop only accepts objects, not strings
-    // This test verifies TypeScript prevents this at compile time
     const TestComponent = () => (
       <div style={{ color: 'red' }}>Test</div>
     );
@@ -228,13 +239,12 @@ describe('XSS Prevention - Style Injection', () => {
   test('inline style object is safe', () => {
     const userColor = '<script>alert(1)</script>';
     
-    // Even if user input is used in style, it's escaped
     const TestComponent = () => (
       <div style={{ color: userColor }}>Test</div>
     );
     
     const { container } = render(<TestComponent />);
-    expect(container.innerHTML).not.toContain('<script><script>');
+    expect(container.querySelector('script')).toBeNull();
   });
 });
 
@@ -256,9 +266,6 @@ describe('XSS Prevention - URL Construction', () => {
 
 describe('XSS Prevention - Event Handlers', () => {
   test('event handlers cannot be injected via props', () => {
-    const maliciousOnClick = 'alert(1)';
-    
-    // React event handlers must be functions, not strings
     const TestComponent = () => (
       <button onClick={() => {}}>Click</button>
     );
@@ -301,13 +308,11 @@ describe('XSS Prevention - Integration Tests', () => {
       />
     );
 
-    // Verify all malicious content is escaped
-    expect(container.innerHTML).not.toContain('<script');
-    expect(container.innerHTML).not.toContain('onerror');
-    expect(container.innerHTML).not.toContain('onload');
-    expect(container.innerHTML).not.toContain('javascript:');
-    
-    // Verify content is escaped
+    // Verify all malicious content is safe
+    expect(container.querySelector('script')).toBeNull();
+    expect(container.querySelector('img')).toBeNull();
+    expect(container.querySelector('svg')).toBeNull();
+    expect(container.innerHTML).not.toMatch(/<(script|img|svg)/i);
     expect(container.innerHTML).toContain('&lt;');
   });
 

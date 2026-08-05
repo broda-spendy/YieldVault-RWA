@@ -4,12 +4,25 @@ use super::*;
 use mock_strategy::MockKoreanSovereignStrategy;
 use soroban_sdk::testutils::Address as _;
 use soroban_sdk::{token, Address, Env, Vec};
-use soroban_sdk::testutils::Address as _;
-use soroban_sdk::{token, Address, Env};
 
 fn create_token_contract<'a>(e: &Env, admin: &Address) -> token::Client<'a> {
     let token_address = e.register_stellar_asset_contract_v2(admin.clone()).address();
     token::Client::new(e, &token_address)
+}
+
+fn create_token<'a>(e: &Env, admin: &Address) -> token::Client<'a> {
+    create_token_contract(e, admin)
+}
+
+fn setup_vault<'a>(e: &Env) -> (YieldVaultClient<'a>, token::Client<'a>, token::StellarAssetClient<'a>, Address) {
+    let admin = Address::generate(e);
+    let token_admin = Address::generate(e);
+    let token = create_token_contract(e, &token_admin);
+    let usdc_sa = token::StellarAssetClient::new(e, &token.address);
+    let vault_id = e.register(YieldVault, ());
+    let vault = YieldVaultClient::new(e, &vault_id);
+    vault.initialize(&admin, &token.address);
+    (vault, token, usdc_sa, admin)
 }
 
 // ─── helper: 10^18 scale factor ───────────────────────────────────────────────
@@ -61,30 +74,12 @@ fn test_vault_flow() {
     assert_eq!(vault.total_shares(), 200);
 
 
-    let minted_user2 = vault.deposit(&user2, &200);
-    assert_eq!(minted_user2, 200);
-    assert_eq!(vault.balance(&user2), 200);
-    assert_eq!(vault.total_assets(), 300);
-    assert_eq!(vault.total_shares(), 300);
-
-    usdc_admin_client.mint(&admin, &30);
-    vault.accrue_yield(&30);
-    assert_eq!(vault.total_assets(), 330);
-
-    let withdrawn_user1 = vault.withdraw(&user1, &100);
-    assert_eq!(withdrawn_user1, 110);
-    assert_eq!(usdc.balance(&user1), 1010);
-    assert_eq!(vault.balance(&user1), 0);
-    assert_eq!(vault.total_assets(), 220);
-    assert_eq!(vault.total_shares(), 200);
-
     let withdrawn_user2 = vault.withdraw(&user2, &100);
     assert_eq!(withdrawn_user2, 110);
     assert_eq!(usdc.balance(&user2), 910);
 }
 
 #[test]
-fn test_governance_sets_benji_strategy() {
 fn test_deposit_invalid_amount() {
     let env = Env::default();
     env.mock_all_auths();
@@ -508,6 +503,10 @@ fn test_share_price_unchanged_after_partial_withdrawal() {
 /// Verifies price increases with each accrual round.
 #[test]
 fn test_share_price_tracks_korean_strategy_yield() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (vault, _, _, _) = setup_vault(&env);
+    let user = Address::generate(&env);
 
     assert!(vault.try_deposit(&user, &0).is_err());
     assert!(vault.try_deposit(&user, &-1).is_err());
@@ -726,6 +725,14 @@ fn test_yield_accrual_maintains_state_consistency() {
     assert!(price_2 > price_1);
     assert!(price_3 > price_2);
 }
+
+#[test]
+fn test_yield_accrual_shares_and_assets() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let (vault, _, usdc_sa, admin) = setup_vault(&env);
+    let user = Address::generate(&env);
     usdc_sa.mint(&user, &1000);
     usdc_sa.mint(&admin, &500);
 

@@ -84,26 +84,36 @@ function LocationDisplay() {
   return <div data-testid="location-display">{location.pathname}{location.search}</div>;
 }
 
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { VaultProvider } from "../context/VaultContext";
+
 function renderPortfolio(
   initialEntry = "/portfolio",
   walletAddress: string | null = "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
 ) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
   return render(
-    <MemoryRouter initialEntries={[initialEntry]}>
-      <ToastProvider>
-        <Routes>
-          <Route
-            path="/portfolio"
-            element={
-              <>
-                <Portfolio walletAddress={walletAddress} />
-                <LocationDisplay />
-              </>
-            }
-          />
-        </Routes>
-      </ToastProvider>
-    </MemoryRouter>,
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter initialEntries={[initialEntry]}>
+        <ToastProvider>
+          <VaultProvider>
+            <Routes>
+              <Route
+                path="/portfolio"
+                element={
+                  <>
+                    <Portfolio walletAddress={walletAddress} />
+                    <LocationDisplay />
+                  </>
+                }
+              />
+            </Routes>
+          </VaultProvider>
+        </ToastProvider>
+      </MemoryRouter>
+    </QueryClientProvider>,
   );
 }
 

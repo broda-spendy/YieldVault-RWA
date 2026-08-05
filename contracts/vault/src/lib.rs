@@ -155,14 +155,16 @@ impl YieldVault {
     }
 
     fn get_state(env: &Env) -> VaultState {
-        env.storage()
-            .instance()
-            .get(&DataKey::State)
-            .unwrap_or(VaultState {
-                total_shares: 0,
-                total_assets: 0,
-                is_paused: false,
-            })
+        let ts = Self::total_shares(env.clone());
+        let ta = Self::total_assets(env.clone());
+        let mut state: VaultState = env.storage().instance().get(&DataKey::State).unwrap_or(VaultState {
+            total_shares: 0,
+            total_assets: 0,
+            is_paused: false,
+        });
+        state.total_shares = ts;
+        state.total_assets = ta;
+        state
     }
 
     pub fn token(env: Env) -> Address {
@@ -170,7 +172,7 @@ impl YieldVault {
     }
 
     pub fn total_shares(env: Env) -> i128 {
-        Self::get_state(&env).total_shares
+        env.storage().instance().get::<_, i128>(&DataKey::TotalShares).unwrap_or(0)
     }
 
     /// Read the total underlying assets represented by the vault.
@@ -232,9 +234,8 @@ impl YieldVault {
             panic!("yield amount must be > 0");
         }
 
-        let mut state = Self::get_state(&env);
-        state.total_assets += harvested;
-        env.storage().instance().set(&DataKey::State, &state);
+        let idle = env.storage().instance().get::<_, i128>(&DataKey::TotalAssets).unwrap_or(0);
+        env.storage().instance().set(&DataKey::TotalAssets, &(idle + harvested));
 
         harvested
     }
@@ -528,25 +529,7 @@ impl YieldVault {
         ids.len()
     }
 
-    fn divest(env: Env, amount: i128) {
-        if amount <= 0 {
-            return;
-        }
 
-        if let Some(strategy_addr) = Self::strategy(env.clone()) {
-            let strategy_client = StrategyClient::new(&env, &strategy_addr);
-            strategy_client.withdraw(&amount);
-
-            let idle_assets = env
-                .storage()
-                .instance()
-                .get::<_, i128>(&DataKey::TotalAssets)
-                .unwrap_or(0);
-            env.storage()
-                .instance()
-                .set(&DataKey::TotalAssets, &(idle_assets + amount));
-        }
-    }
 
     /// Calculates the number of shares given an asset amount based on the current exchange rate.
     pub fn calculate_shares(env: Env, assets: i128) -> Result<i128, VaultError> {
@@ -630,10 +613,10 @@ impl YieldVault {
         token_client.transfer(&user, &env.current_contract_address(), &amount);
 
         // Update state
-        let ta = Self::total_assets(env.clone());
+        let idle = env.storage().instance().get::<_, i128>(&DataKey::TotalAssets).unwrap_or(0);
         env.storage()
             .instance()
-            .set(&DataKey::TotalAssets, &Self::checked_add(ta, amount)?);
+            .set(&DataKey::TotalAssets, &Self::checked_add(idle, amount)?);
         
         let ts = Self::total_shares(env.clone());
         env.storage()
@@ -697,10 +680,10 @@ impl YieldVault {
         token_client.transfer(&vault_address, &user, &assets_to_return);
 
         // Update state
-        let ta = Self::total_assets(env.clone());
+        let idle = env.storage().instance().get::<_, i128>(&DataKey::TotalAssets).unwrap_or(0);
         env.storage()
             .instance()
-            .set(&DataKey::TotalAssets, &Self::checked_sub(ta, assets_to_return)?);
+            .set(&DataKey::TotalAssets, &Self::checked_sub(idle, assets_to_return)?);
         
         let ts = Self::total_shares(env.clone());
         env.storage()
@@ -726,21 +709,26 @@ impl YieldVault {
         let admin: Address = env.storage().instance().get(&DataKey::Admin).unwrap();
         admin.require_auth();
 
-        let strategy_addr = Self::strategy(env.clone()).expect("no strategy set");
-        let strategy_client = StrategyClient::new(&env, &strategy_addr);
+        if let Some(strategy_addr) = Self::strategy(env.clone()) {
+            let idle = env.storage().instance().get::<_, i128>(&DataKey::TotalAssets).unwrap_or(0);
+            if idle >= amount {
+                let strategy_client = StrategyClient::new(&env, &strategy_addr);
+                let token_addr = Self::token(env.clone());
+                let token_client = token::Client::new(&env, &token_addr);
+                token_client.approve(&env.current_contract_address(), &strategy_addr, &amount, &env.ledger().sequence());
+                strategy_client.deposit(&amount);
+                env.storage().instance().set(&DataKey::TotalAssets, &(idle - amount));
+                return Ok(());
+            }
+        }
 
-        let mut idle_ta = env.storage().instance().get::<_, i128>(&DataKey::TotalAssets).unwrap_or(0);
-        if idle_ta < amount { panic!("insufficient idle assets"); }
-
-        // Approve and deposit to strategy
+        // No strategy: admin transfers real tokens into the vault to back the yield
         let token_addr = Self::token(env.clone());
         let token_client = token::Client::new(&env, &token_addr);
-        token_client.approve(&env.current_contract_address(), &strategy_addr, &amount, &env.ledger().sequence());
-        
-        strategy_client.deposit(&amount);
+        token_client.transfer(&admin, &env.current_contract_address(), &amount);
 
-        // Update idle assets
-        env.storage().instance().set(&DataKey::TotalAssets, &(idle_ta - amount));
+        let idle = env.storage().instance().get::<_, i128>(&DataKey::TotalAssets).unwrap_or(0);
+        env.storage().instance().set(&DataKey::TotalAssets, &(idle + amount));
         Ok(())
     }
 
@@ -796,6 +784,15 @@ impl YieldVault {
         strategy.require_auth();
         if amount <= 0 {
             return Err(VaultError::InvalidAmount);
+        }
+
+        let active_benji = env
+            .storage()
+            .instance()
+            .get::<_, Address>(&DataKey::BenjiStrategy)
+            .expect("unauthorized strategy");
+        if strategy != active_benji {
+            panic!("unauthorized strategy");
         }
 
         let token_addr = Self::token(env.clone());

@@ -41,11 +41,24 @@ function makeManyTransactions(count: number): Transaction[] {
   );
 }
 
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ToastProvider } from "../context/ToastContext";
+import { VaultProvider } from "../context/VaultContext";
+
 function renderPage(walletAddress: string | null, initialEntries = ["/"]) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
   return render(
-    <MemoryRouter initialEntries={initialEntries}>
-      <TransactionHistory walletAddress={walletAddress} />
-    </MemoryRouter>,
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter initialEntries={initialEntries}>
+        <ToastProvider>
+          <VaultProvider>
+            <TransactionHistory walletAddress={walletAddress} />
+          </VaultProvider>
+        </ToastProvider>
+      </MemoryRouter>
+    </QueryClientProvider>,
   );
 }
 

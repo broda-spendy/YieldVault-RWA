@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import ApiStatusBanner from "../components/ApiStatusBanner";
 import {
   DataTable,
@@ -7,7 +7,6 @@ import {
 import PageHeader from "../components/PageHeader";
 import { normalizeApiError, isValidationError, type ApiError, type ValidationError } from "../lib/api";
 import CopyButton from "../components/CopyButton";
-import { normalizeApiError, type ApiError } from "../lib/api";
 import {
   getPortfolioHoldings,
   type PortfolioHolding,
@@ -16,7 +15,7 @@ import { useClientDataTable } from "../hooks/useClientDataTable";
 import { useUrlState } from "../hooks/useUrlState";
 import { useServerDataTable } from "../hooks/useServerDataTable";
 import { usePortfolioHoldings } from "../hooks/usePortfolioData";
-import { normalizeApiError } from "../lib/api";
+import { useToast } from "../context/ToastContext";
 
 interface PortfolioProps {
   walletAddress: string | null;

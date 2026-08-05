@@ -76,6 +76,7 @@ export function useUrlState<TFilters extends Record<string, string>>(
           }
           if (updates.sortDirection !== undefined) {
             next.set("direction", updates.sortDirection);
+            next.set("sortDirection", updates.sortDirection);
           }
 
           if (updates.filters !== undefined) {

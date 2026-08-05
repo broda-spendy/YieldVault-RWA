@@ -1,11 +1,11 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import ApiStatusBanner from "../components/ApiStatusBanner";
 import { DataTable, type DataTableColumn } from "../components/DataTable";
 import PageHeader from "../components/PageHeader";
-import { normalizeApiError, type ApiError } from "../lib/api";
 import { normalizeApiError, isValidationError, type ApiError, type ValidationError } from "../lib/api";
 import {
+  getTransactions,
   formatAmount,
   formatTimestamp,
   truncateHash,

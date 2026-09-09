@@ -8,7 +8,7 @@
 import {
   Contract,
   Networks,
-  SorobanRpc,
+  rpc as SorobanRpc,
   TransactionBuilder,
   BASE_FEE,
   nativeToScVal,

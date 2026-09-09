@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import ApiStatusBanner from "../components/ApiStatusBanner";
 import {
   DataTable,
@@ -14,7 +14,6 @@ import {
 import { useClientDataTable } from "../hooks/useClientDataTable";
 import { useUrlState } from "../hooks/useUrlState";
 import { useServerDataTable } from "../hooks/useServerDataTable";
-import { usePortfolioHoldings } from "../hooks/usePortfolioData";
 import { useToast } from "../context/ToastContext";
 
 interface PortfolioProps {
@@ -243,7 +242,7 @@ const Portfolio: React.FC<PortfolioProps> = ({ walletAddress }) => {
                 },
                 {
                   label: isLoading ? "Syncing..." : "Live",
-                  variant: (isLoading ? "warning" : "success") as const,
+                  variant: isLoading ? "warning" : "success",
                 },
               ]
             : undefined

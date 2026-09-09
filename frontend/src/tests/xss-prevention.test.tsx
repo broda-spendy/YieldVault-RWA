@@ -15,6 +15,7 @@ const XSS_PAYLOADS = [
   '<script>alert("XSS")</script>',
   '<img src=x onerror=alert("XSS")>',
   '<svg onload=alert("XSS")>',
+  // eslint-disable-next-line no-script-url
   'javascript:alert("XSS")',
   '<iframe src="javascript:alert(\'XSS\')">',
   '<body onload=alert("XSS")>',
@@ -215,6 +216,7 @@ describe('XSS Prevention - React JSX Rendering', () => {
   });
 
   test('React prevents JavaScript protocol in href', () => {
+    // eslint-disable-next-line no-script-url
     const maliciousHref = 'javascript:alert(1)';
     const TestComponent = () => <a href={maliciousHref}>Link</a>;
     const { container } = render(<TestComponent />);
@@ -233,6 +235,7 @@ describe('XSS Prevention - Style Injection', () => {
     );
     
     const { container } = render(<TestComponent />);
+    // eslint-disable-next-line no-script-url
     expect(container.innerHTML).not.toContain('javascript:');
   });
 
@@ -289,6 +292,7 @@ describe('XSS Prevention - Integration Tests', () => {
       id: '<script>alert(1)</script>',
       type: '<img src=x onerror=alert(1)>',
       amount: '<svg onload=alert(1)>',
+      // eslint-disable-next-line no-script-url
       asset: 'javascript:alert(1)',
     };
 

@@ -17,39 +17,40 @@ export type ConnectionStatus = 'idle' | 'connecting' | 'connected' | 'error';
 export type ConnectionErrorType = 'permission' | 'noAddress' | 'failed';
 
 const WalletConnect: React.FC<WalletConnectProps> = ({ walletAddress, onConnect, onDisconnect }) => {
-    const [status, setStatus] = useState<ConnectionStatus>(walletAddress ? 'connected' : 'idle');
+    const [internalStatus, setInternalStatus] = useState<ConnectionStatus>(walletAddress ? 'connected' : 'idle');
     const [errorType, setErrorType] = useState<ConnectionErrorType | null>(null);
     const toast = useToast();
     const { t } = useTranslation();
 
-    useEffect(() => {
-        if (walletAddress) {
-            setStatus('connected');
-        } else if (status === 'connected') {
-            setStatus('idle');
+    // Derive effective status: walletAddress from parent takes precedence for 'connected'/'idle',
+    // but internal 'connecting'/'error' states override for UX
+    const status: ConnectionStatus = (() => {
+        if (internalStatus === 'connecting' || internalStatus === 'error') {
+            return internalStatus;
         }
-    }, [walletAddress]);
+        return walletAddress ? 'connected' : 'idle';
+    })();
 
     useEffect(() => {
         let mounted = true;
 
         const syncConnection = async () => {
             // Only sync if we are not actively trying to connect
-            if (status === 'connecting') return;
+            if (internalStatus === 'connecting') return;
 
             const discoveredAddress = await discoverConnectedAddress();
             if (!mounted) return;
 
             if (discoveredAddress) {
                 onConnect(discoveredAddress);
-                setStatus('connected');
+                setInternalStatus('connected');
                 setErrorType(null);
                 return;
             }
 
             if (walletAddress) {
                 onDisconnect();
-                setStatus('idle');
+                setInternalStatus('idle');
                 toast.info({
                     title: t('toast.walletDisconnected.title'),
                     description: t('toast.walletDisconnected.description'),
@@ -64,16 +65,16 @@ const WalletConnect: React.FC<WalletConnectProps> = ({ walletAddress, onConnect,
             mounted = false;
             window.clearInterval(interval);
         };
-    }, [onConnect, onDisconnect, toast, walletAddress, status, t]);
+    }, [onConnect, onDisconnect, toast, walletAddress, internalStatus, t]);
 
     const handleConnect = async () => {
-        setStatus('connecting');
+        setInternalStatus('connecting');
         setErrorType(null);
         try {
             await setAllowed();
             const allowed = await isAllowed();
             if (!allowed.isAllowed) {
-                setStatus('error');
+                setInternalStatus('error');
                 setErrorType('permission');
                 toast.warning({
                     title: t('toast.walletPermissionRequired.title'),
@@ -84,7 +85,7 @@ const WalletConnect: React.FC<WalletConnectProps> = ({ walletAddress, onConnect,
 
             const userInfo = await getAddress();
             if (!userInfo.address) {
-                setStatus('error');
+                setInternalStatus('error');
                 setErrorType('noAddress');
                 toast.warning({
                     title: t('toast.walletPermissionRequired.title'),
@@ -94,14 +95,14 @@ const WalletConnect: React.FC<WalletConnectProps> = ({ walletAddress, onConnect,
             }
 
             onConnect(userInfo.address);
-            setStatus('connected');
+            setInternalStatus('connected');
             toast.success({
                 title: t('toast.walletConnected.title'),
                 description: t('toast.walletConnected.description'),
             });
         } catch (e: unknown) {
             console.error(e);
-            setStatus('error');
+            setInternalStatus('error');
             setErrorType('failed');
             toast.error({
                 title: t('toast.walletConnectionFailed.title'),
@@ -167,7 +168,7 @@ const WalletConnect: React.FC<WalletConnectProps> = ({ walletAddress, onConnect,
                     style={{ padding: '8px', borderRadius: '50%' }}
                     onClick={() => {
                         onDisconnect();
-                        setStatus('idle');
+                        setInternalStatus('idle');
                         toast.info({
                             title: t('toast.walletDisconnected.title'),
                             description: t('toast.walletDisconnected.description'),

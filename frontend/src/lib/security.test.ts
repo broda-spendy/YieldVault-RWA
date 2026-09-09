@@ -30,6 +30,7 @@ describe('isValidTransactionHash', () => {
       'a'.repeat(63), // too short
       'a'.repeat(65), // too long
       'g'.repeat(64), // invalid hex character
+      // eslint-disable-next-line no-script-url
       'javascript:alert(1)',
       '<script>alert(1)</script>',
       '../../etc/passwd',
@@ -58,6 +59,7 @@ describe('isValidStellarAddress', () => {
     const invalidAddresses = [
       'ABRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H', // wrong prefix
       'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2', // too short
+      // eslint-disable-next-line no-script-url
       'javascript:alert(1)',
       '<script>alert(1)</script>',
       '',
@@ -88,6 +90,7 @@ describe('sanitizeExternalUrl', () => {
 
   test('blocks dangerous protocols', () => {
     const dangerousUrls = [
+      // eslint-disable-next-line no-script-url
       'javascript:alert(1)',
       'data:text/html,<script>alert(1)</script>',
       'vbscript:msgbox(1)',
@@ -129,6 +132,7 @@ describe('getStellarExplorerUrl', () => {
   test('returns # for invalid transaction hashes', () => {
     const invalidHashes = [
       'short',
+      // eslint-disable-next-line no-script-url
       'javascript:alert(1)',
       '<script>alert(1)</script>',
       '',
@@ -239,6 +243,7 @@ describe('XSS Attack Vectors', () => {
     '<script>alert("XSS")</script>',
     '<img src=x onerror=alert("XSS")>',
     '<svg onload=alert("XSS")>',
+    // eslint-disable-next-line no-script-url
     'javascript:alert("XSS")',
     '<iframe src="javascript:alert(\'XSS\')">',
     '<body onload=alert("XSS")>',

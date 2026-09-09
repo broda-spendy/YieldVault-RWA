@@ -110,12 +110,12 @@ describe("VaultDashboard", () => {
     renderDashboard("GABC123");
 
     expect(screen.queryByText(/Wallet Not Connected/i)).not.toBeInTheDocument();
-    expect(screen.getByText(/Global RWA Yield Fund/i)).toBeInTheDocument();
-    expect(screen.getByText(/Current APY/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Global RWA Yield Fund/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Current APY/i)).toBeInTheDocument();
 
     expect(await screen.findByText(/Sovereign Debt/i)).toBeInTheDocument();
-    expect(screen.getByText(/Strategy ID:/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Copy strategy ID/i })).toBeInTheDocument();
+    expect(await screen.findByText(/Strategy ID:/i)).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: /Copy strategy ID/i })).toBeInTheDocument();
   });
 
   it("allows switching between deposit and withdraw tabs", async () => {

@@ -7,6 +7,7 @@ import VaultPerformanceChart from "./VaultPerformanceChart";
 import { useToast } from "../context/ToastContext";
 import CopyButton from "./CopyButton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./Tabs";
+import { SkeletonStat, SkeletonChart, SkeletonText } from "./Skeleton";
 
 interface VaultDashboardProps {
   walletAddress: string | null;
@@ -79,148 +80,158 @@ const VaultDashboard: React.FC<VaultDashboardProps> = ({
         <div className="glass-panel" style={{ padding: "32px" }}>
           {error && <ApiStatusBanner error={error} />}
 
-          <div
-            className="vault-stats-header flex justify-between items-center"
-            style={{ marginBottom: "24px" }}
-          >
-            <div>
-              <h2 style={{ fontSize: "1.5rem", marginBottom: "4px" }}>
-                Global RWA Yield Fund
-              </h2>
-              <span
-                className="tag"
-                style={{
-                  background: "rgba(255, 255, 255, 0.05)",
-                  color: "var(--text-secondary)",
-                }}
-              >
-                Tokens: USDC
-              </span>
-            </div>
-            <div style={{ textAlign: "right" }}>
-              <div style={{ color: "var(--text-secondary)", fontSize: "0.85rem" }}>
-                Current APY
-              </div>
+          {isLoading ? (
+            <>
+              <SkeletonStat />
+              <SkeletonStat />
+              <SkeletonText lines={3} width="100%" />
+            </>
+          ) : (
+            <>
               <div
-                className="text-gradient"
-                style={{
-                  fontSize: "2rem",
-                  fontFamily: "var(--font-display)",
-                  fontWeight: 700,
-                }}
+                className="vault-stats-header flex justify-between items-center"
+                style={{ marginBottom: "24px" }}
               >
-                {formattedApy}
+                <div>
+                  <h2 style={{ fontSize: "1.5rem", marginBottom: "4px" }}>
+                    Global RWA Yield Fund
+                  </h2>
+                  <span
+                    className="tag"
+                    style={{
+                      background: "rgba(255, 255, 255, 0.05)",
+                      color: "var(--text-secondary)",
+                    }}
+                  >
+                    Tokens: USDC
+                  </span>
+                </div>
+                <div style={{ textAlign: "right" }}>
+                  <div style={{ color: "var(--text-secondary)", fontSize: "0.85rem" }}>
+                    Current APY
+                  </div>
+                  <div
+                    className="text-gradient"
+                    style={{
+                      fontSize: "2rem",
+                      fontFamily: "var(--font-display)",
+                      fontWeight: 700,
+                    }}
+                  >
+                    {formattedApy}
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
 
-          <div
-            style={{
-              height: "1px",
-              background: "var(--border-glass)",
-              margin: "24px 0",
-            }}
-          />
-
-          <div className="vault-stats-meta flex gap-xl" style={{ marginBottom: "32px" }}>
-            <div>
               <div
                 style={{
-                  color: "var(--text-secondary)",
-                  fontSize: "0.85rem",
-                  marginBottom: "4px",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "6px",
+                  height: "1px",
+                  background: "var(--border-glass)",
+                  margin: "24px 0",
                 }}
-              >
-                Total Value Locked
-                <span
-                  className="flex items-center gap-xs"
+              />
+
+              <div className="vault-stats-meta flex gap-xl" style={{ marginBottom: "32px" }}>
+                <div>
+                  <div
+                    style={{
+                      color: "var(--text-secondary)",
+                      fontSize: "0.85rem",
+                      marginBottom: "4px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                    }}
+                  >
+                    Total Value Locked
+                    <span
+                      className="flex items-center gap-xs"
+                      style={{
+                        color: "var(--accent-cyan)",
+                        fontSize: "0.7rem",
+                        fontWeight: 600,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.05em",
+                      }}
+                    >
+                      <Activity size={10} className={isLoading ? "animate-pulse" : undefined} />
+                      {isLoading ? "Syncing" : "Live"}
+                    </span>
+                  </div>
+                  <div
+                    style={{
+                      fontSize: "1.25rem",
+                      fontFamily: "var(--font-display)",
+                      fontWeight: 600,
+                    }}
+                  >
+                    {formattedTvl}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ color: "var(--text-secondary)", fontSize: "0.85rem", marginBottom: "4px" }}>
+                    Underlying Asset
+                  </div>
+                  <div className="flex items-center gap-sm">
+                    <ShieldCheck size={16} color="var(--accent-cyan)" />
+                    <span style={{ fontSize: "1.1rem", fontWeight: 500 }}>
+                      {summary.assetLabel}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="glass-panel" style={{ padding: "20px", background: "var(--bg-muted)" }}>
+                <h3
                   style={{
-                    color: "var(--accent-cyan)",
-                    fontSize: "0.7rem",
-                    fontWeight: 600,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.05em",
+                    fontSize: "1.1rem",
+                    marginBottom: "12px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
                   }}
                 >
-                  <Activity size={10} className={isLoading ? "animate-pulse" : undefined} />
-                  {isLoading ? "Syncing" : "Live"}
-                </span>
+                  <TrendingUp size={18} color="var(--accent-purple)" />
+                  Strategy Overview
+                </h3>
+                <p
+                  style={{
+                    color: "var(--text-secondary)",
+                    fontSize: "0.9rem",
+                    lineHeight: "1.6",
+                  }}
+                >
+                  This vault pools USDC and deploys it into verified tokenized sovereign bonds
+                  available on the Stellar network. Yields are algorithmically harvested and
+                  auto-compounded daily into the vault token price.
+                </p>
+                <div style={{ marginTop: "12px", color: "var(--text-secondary)", fontSize: "0.82rem" }}>
+                  Strategy: <span style={{ color: "var(--text-primary)" }}>{strategy.name}</span> ({strategy.issuer})
+                </div>
+                <div
+                  className="copy-field"
+                  style={{ marginTop: "8px", color: "var(--text-secondary)", fontSize: "0.78rem" }}
+                >
+                  <span>Strategy ID:</span>
+                  <span className="copy-field-value copy-field-value-mono">{strategy.id}</span>
+                  <CopyButton
+                    value={strategy.id}
+                    label="strategy ID"
+                    successDescription="The strategy ID has been copied to your clipboard."
+                  />
+                </div>
+                <div style={{ marginTop: "8px", color: "var(--text-secondary)", fontSize: "0.78rem" }}>
+                  RPC: {hasCustomRpcConfig ? "Custom" : "Default"} - {networkConfig.rpcUrl}
+                </div>
               </div>
-              <div
-                style={{
-                  fontSize: "1.25rem",
-                  fontFamily: "var(--font-display)",
-                  fontWeight: 600,
-                }}
-              >
-                {formattedTvl}
-              </div>
-            </div>
-            <div>
-              <div style={{ color: "var(--text-secondary)", fontSize: "0.85rem", marginBottom: "4px" }}>
-                Underlying Asset
-              </div>
-              <div className="flex items-center gap-sm">
-                <ShieldCheck size={16} color="var(--accent-cyan)" />
-                <span style={{ fontSize: "1.1rem", fontWeight: 500 }}>
-                  {summary.assetLabel}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="glass-panel" style={{ padding: "20px", background: "var(--bg-muted)" }}>
-            <h3
-              style={{
-                fontSize: "1.1rem",
-                marginBottom: "12px",
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-              }}
-            >
-              <TrendingUp size={18} color="var(--accent-purple)" />
-              Strategy Overview
-            </h3>
-            <p
-              style={{
-                color: "var(--text-secondary)",
-                fontSize: "0.9rem",
-                lineHeight: "1.6",
-              }}
-            >
-              This vault pools USDC and deploys it into verified tokenized sovereign bonds
-              available on the Stellar network. Yields are algorithmically harvested and
-              auto-compounded daily into the vault token price.
-            </p>
-            <div style={{ marginTop: "12px", color: "var(--text-secondary)", fontSize: "0.82rem" }}>
-              Strategy: <span style={{ color: "var(--text-primary)" }}>{strategy.name}</span> ({strategy.issuer})
-            </div>
-            <div
-              className="copy-field"
-              style={{ marginTop: "8px", color: "var(--text-secondary)", fontSize: "0.78rem" }}
-            >
-              <span>Strategy ID:</span>
-              <span className="copy-field-value copy-field-value-mono">{strategy.id}</span>
-              <CopyButton
-                value={strategy.id}
-                label="strategy ID"
-                successDescription="The strategy ID has been copied to your clipboard."
-              />
-            </div>
-            <div style={{ marginTop: "8px", color: "var(--text-secondary)", fontSize: "0.78rem" }}>
-              RPC: {hasCustomRpcConfig ? "Custom" : "Default"} - {networkConfig.rpcUrl}
-            </div>
-          </div>
+            </>
+          )}
         </div>
       </div>
 
       <div className="vault-dashboard-chart">
         <div className="glass-panel vault-chart-panel">
-          <VaultPerformanceChart />
+          {isLoading ? <SkeletonChart height={300} /> : <VaultPerformanceChart />}
         </div>
       </div>
 

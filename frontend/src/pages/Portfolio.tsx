@@ -15,6 +15,7 @@ import { useClientDataTable } from "../hooks/useClientDataTable";
 import { useUrlState } from "../hooks/useUrlState";
 import { useServerDataTable } from "../hooks/useServerDataTable";
 import { useToast } from "../context/ToastContext";
+import { SkeletonStat, SkeletonTable } from "../components/Skeleton";
 
 interface PortfolioProps {
   walletAddress: string | null;
@@ -263,34 +264,43 @@ const Portfolio: React.FC<PortfolioProps> = ({ walletAddress }) => {
             className="portfolio-summary-grid"
             style={{ display: "grid", gap: "24px", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))" }}
           >
-            <div
-              className="glass-panel"
-              style={{ padding: "24px", background: "var(--bg-muted)" }}
-            >
-              <div className="text-body-sm" style={{ color: "var(--text-secondary)" }}>
-                Total Assets
-              </div>
-              <div style={{ fontSize: "var(--text-4xl)", fontWeight: "var(--font-semibold)" }}>
-                {currencyFormatter.format(totalValue)}
-              </div>
-            </div>
-            <div
-              className="glass-panel"
-              style={{ padding: "24px", background: "var(--bg-muted)" }}
-            >
-              <div className="text-body-sm" style={{ color: "var(--text-secondary)" }}>
-                Unrealized Gain
-              </div>
-              <div
-                style={{
-                  fontSize: "var(--text-2xl)",
-                  color: "var(--accent-cyan)",
-                  fontWeight: "var(--font-semibold)",
-                }}
-              >
-                +{currencyFormatter.format(totalGain)}
-              </div>
-            </div>
+            {isLoading ? (
+              <>
+                <SkeletonStat />
+                <SkeletonStat />
+              </>
+            ) : (
+              <>
+                <div
+                  className="glass-panel"
+                  style={{ padding: "24px", background: "var(--bg-muted)" }}
+                >
+                  <div className="text-body-sm" style={{ color: "var(--text-secondary)" }}>
+                    Total Assets
+                  </div>
+                  <div style={{ fontSize: "var(--text-4xl)", fontWeight: "var(--font-semibold)" }}>
+                    {currencyFormatter.format(totalValue)}
+                  </div>
+                </div>
+                <div
+                  className="glass-panel"
+                  style={{ padding: "24px", background: "var(--bg-muted)" }}
+                >
+                  <div className="text-body-sm" style={{ color: "var(--text-secondary)" }}>
+                    Unrealized Gain
+                  </div>
+                  <div
+                    style={{
+                      fontSize: "var(--text-2xl)",
+                      color: "var(--accent-cyan)",
+                      fontWeight: "var(--font-semibold)",
+                    }}
+                  >
+                    +{currencyFormatter.format(totalGain)}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
 
           <section
@@ -354,36 +364,40 @@ const Portfolio: React.FC<PortfolioProps> = ({ walletAddress }) => {
               {isLoading ? "Loading holdings..." : `${totalItems} holdings found`}
             </div>
 
-            <DataTable
-              caption="Portfolio holdings"
-              columns={columns}
-              rows={rows}
-              rowKey={(row) => row.id}
-              emptyMessage={
-                isLoading
-                  ? "Loading holdings..."
-                  : "No holdings matched the current filters."
-              }
-              sortBy={state.sortBy}
-              sortDirection={state.sortDirection}
-              onSortChange={setSort}
-              pagination={{
-                page,
-                pageSize: state.pageSize,
-                totalItems,
-                totalPages,
-              }}
-              onPageChange={setPage}
-              onPageSizeChange={setPageSize}
-              renderRowDetails={(row) => (
-                <div className="portfolio-row-meta">
-                  <span className={`tag ${row.status === "active" ? "cyan" : ""}`}>
-                    {row.status}
-                  </span>
-                  <span>{row.symbol}</span>
-                </div>
-              )}
-            />
+            {isLoading ? (
+              <SkeletonTable rows={5} columns={6} />
+            ) : (
+              <DataTable
+                caption="Portfolio holdings"
+                columns={columns}
+                rows={rows}
+                rowKey={(row) => row.id}
+                emptyMessage={
+                  isLoading
+                    ? "Loading holdings..."
+                    : "No holdings matched the current filters."
+                }
+                sortBy={state.sortBy}
+                sortDirection={state.sortDirection}
+                onSortChange={setSort}
+                pagination={{
+                  page,
+                  pageSize: state.pageSize,
+                  totalItems,
+                  totalPages,
+                }}
+                onPageChange={setPage}
+                onPageSizeChange={setPageSize}
+                renderRowDetails={(row) => (
+                  <div className="portfolio-row-meta">
+                    <span className={`tag ${row.status === "active" ? "cyan" : ""}`}>
+                      {row.status}
+                    </span>
+                    <span>{row.symbol}</span>
+                  </div>
+                )}
+              />
+            )}
           </section>
         </div>
       )}

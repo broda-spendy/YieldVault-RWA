@@ -14,6 +14,7 @@ import {
 import { useClientDataTable } from "../hooks/useClientDataTable";
 import { useDataTableState } from "../hooks/useDataTableState";
 import { getStellarExplorerUrl } from "../lib/security";
+import { SkeletonTable } from "../components/Skeleton";
 
 interface TransactionHistoryProps {
   walletAddress: string | null;
@@ -263,15 +264,7 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({
             </div>
 
             {isLoading ? (
-              <div
-                style={{
-                  textAlign: "center",
-                  padding: "48px",
-                  color: "var(--text-secondary)",
-                }}
-              >
-                Loading transactions...
-              </div>
+              <SkeletonTable rows={5} columns={5} />
             ) : (
               <DataTable
                 caption="Transaction history"

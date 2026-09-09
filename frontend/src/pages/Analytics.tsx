@@ -3,7 +3,7 @@ import { Activity } from "../components/icons";
 import ApiStatusBanner from "../components/ApiStatusBanner";
 import PageHeader from "../components/PageHeader";
 import { useVault } from "../context/VaultContext";
-import ViewState from "../components/ViewState";
+import { SkeletonStat, SkeletonText } from "../components/Skeleton";
 
 const Analytics: React.FC = () => {
     const { formattedTvl, summary, error, isLoading } = useVault();
@@ -11,12 +11,6 @@ const Analytics: React.FC = () => {
     return (
         <div className="glass-panel" style={{ padding: '32px' }}>
             {error && <ApiStatusBanner error={error} />}
-            {isLoading && !error && (
-                <ViewState
-                    title="Loading analytics"
-                    description="Preparing current pool health and performance metrics."
-                />
-            )}
 
             <PageHeader
                 title={<span className="text-gradient">Project Analytics</span>}
@@ -34,31 +28,45 @@ const Analytics: React.FC = () => {
             />
 
             <div className="flex gap-lg" style={{ flexWrap: 'wrap' }}>
-                <div className="glass-panel" style={{ flex: '1 1 300px', padding: '24px', background: 'var(--bg-muted)' }}>
-                    <div className="text-body-sm" style={{ color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between' }}>
-                        Total Value Locked
-                        <span style={{ color: 'var(--accent-cyan)', fontSize: 'var(--text-xs)', fontWeight: 'var(--font-semibold)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <Activity size={10} className={isLoading ? "animate-pulse" : undefined} />
-                            {isLoading ? "SYNCING" : "LIVE"}
-                        </span>
-                    </div>
-                    <div style={{ fontSize: 'var(--text-4xl)', fontWeight: 'var(--font-semibold)' }}>{formattedTvl}</div>
-                    <div className="text-caption" style={{ color: 'var(--accent-cyan)', marginTop: '8px' }}>+{summary.monthlyGrowthPct}% this month</div>
-                </div>
-                <div className="glass-panel" style={{ flex: '1 1 300px', padding: '24px', background: 'var(--bg-muted)' }}>
-                    <div className="text-body-sm" style={{ color: 'var(--text-secondary)' }}>Vault Participants</div>
-                    <div style={{ fontSize: 'var(--text-4xl)', fontWeight: 'var(--font-semibold)' }}>{summary.participantCount.toLocaleString('en-US')}</div>
-                    <div className="text-caption" style={{ color: 'var(--accent-cyan)', marginTop: '8px' }}>+82 new users</div>
-                </div>
-                <div className="glass-panel" style={{ flex: '1 1 300px', padding: '24px', background: 'var(--bg-muted)' }}>
-                    <div className="text-body-sm" style={{ color: 'var(--text-secondary)' }}>Strategy Stability</div>
-                    <div style={{ fontSize: 'var(--text-4xl)', fontWeight: 'var(--font-semibold)' }}>{summary.strategyStabilityPct}%</div>
-                    <div className="text-caption" style={{ color: 'var(--accent-cyan)', marginTop: '8px' }}>Tracking Sovereign Bonds</div>
-                </div>
+                {isLoading ? (
+                    <>
+                        <SkeletonStat />
+                        <SkeletonStat />
+                        <SkeletonStat />
+                    </>
+                ) : (
+                    <>
+                        <div className="glass-panel" style={{ flex: '1 1 300px', padding: '24px', background: 'var(--bg-muted)' }}>
+                            <div className="text-body-sm" style={{ color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between' }}>
+                                Total Value Locked
+                                <span style={{ color: 'var(--accent-cyan)', fontSize: 'var(--text-xs)', fontWeight: 'var(--font-semibold)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    <Activity size={10} className={isLoading ? "animate-pulse" : undefined} />
+                                    {isLoading ? "SYNCING" : "LIVE"}
+                                </span>
+                            </div>
+                            <div style={{ fontSize: 'var(--text-4xl)', fontWeight: 'var(--font-semibold)' }}>{formattedTvl}</div>
+                            <div className="text-caption" style={{ color: 'var(--accent-cyan)', marginTop: '8px' }}>+{summary.monthlyGrowthPct}% this month</div>
+                        </div>
+                        <div className="glass-panel" style={{ flex: '1 1 300px', padding: '24px', background: 'var(--bg-muted)' }}>
+                            <div className="text-body-sm" style={{ color: 'var(--text-secondary)' }}>Vault Participants</div>
+                            <div style={{ fontSize: 'var(--text-4xl)', fontWeight: 'var(--font-semibold)' }}>{summary.participantCount.toLocaleString('en-US')}</div>
+                            <div className="text-caption" style={{ color: 'var(--accent-cyan)', marginTop: '8px' }}>+82 new users</div>
+                        </div>
+                        <div className="glass-panel" style={{ flex: '1 1 300px', padding: '24px', background: 'var(--bg-muted)' }}>
+                            <div className="text-body-sm" style={{ color: 'var(--text-secondary)' }}>Strategy Stability</div>
+                            <div style={{ fontSize: 'var(--text-4xl)', fontWeight: 'var(--font-semibold)' }}>{summary.strategyStabilityPct}%</div>
+                            <div className="text-caption" style={{ color: 'var(--accent-cyan)', marginTop: '8px' }}>Tracking Sovereign Bonds</div>
+                        </div>
+                    </>
+                )}
             </div>
 
             <div className="glass-panel" style={{ marginTop: '32px', padding: '48px', textAlign: 'center', background: 'var(--bg-muted)' }}>
-                <div style={{ color: 'var(--text-secondary)' }}>Interactive Charts coming soon...</div>
+                {isLoading ? (
+                    <SkeletonText lines={2} width="60%" />
+                ) : (
+                    <div style={{ color: 'var(--text-secondary)' }}>Interactive Charts coming soon...</div>
+                )}
             </div>
         </div>
     );
